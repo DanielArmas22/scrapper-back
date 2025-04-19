@@ -3,10 +3,18 @@ const express = require('express');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
-const scrapeCoches = require('./scraper-coches');
+const cors = require('cors'); // Importamos el paquete cors
+const scrapeCoches = require('./cochesnet/scraper-coches');
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 1337;
+
+// Configuración de CORS
+app.use(cors({
+  origin: 'http://localhost:3000', // Permitimos solicitudes desde tu frontend
+  methods: ['GET', 'POST', 'OPTIONS'], // Métodos permitidos
+  credentials: true // Permite cookies en solicitudes cross-origin si las necesitas
+}));
 
 // Middleware para parsear JSON
 app.use(express.json());
@@ -20,7 +28,7 @@ app.get('/', (req, res) => {
 });
 
 // Endpoint para la búsqueda directa (envía consulta a n8n)
-app.post('/search', async (req, res) => {
+app.post('/cochesnet/search', async (req, res) => {
   try {
     //const { query } = req.query;
     const { query } = req.body;
@@ -32,7 +40,7 @@ app.post('/search', async (req, res) => {
     console.log('Consulta recibida:', query);
 
     // Enviar consulta al flujo de n8n para obtener la URL
-    const n8nBuscarUrl = 'https://n8n.sitemaster.lat/webhook/cochesnet'; // Actualiza con tu URL real
+    const n8nBuscarUrl = 'https://n8n.sitemaster.lat/webhook/search/cochesnet/generate-url'; // Actualiza con tu URL real
     const n8nResponse = await axios.post(n8nBuscarUrl, { query }, {
       headers: {
         'Content-Type': 'application/json'
@@ -73,7 +81,7 @@ app.post('/search', async (req, res) => {
 });
 
 // Ruta alternativa para pruebas que usa directamente una URL sin n8n
-app.get('/scrape-direct', async (req, res) => {
+app.get('/cochesnet/scrape-direct', async (req, res) => {
   try {
     const { url } = req.query;
 
