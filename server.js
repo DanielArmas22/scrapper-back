@@ -40,7 +40,7 @@ app.post('/cochesnet/search', async (req, res) => {
     console.log('Consulta recibida (Coches.net):', query);
 
     // Enviar consulta al flujo de n8n para obtener la URL
-    const n8nBuscarUrl = 'https://n8n.sitemaster.lat/webhook/search/cochesnet/generate-url';
+    const n8nBuscarUrl = 'https://n8n.sitemaster.lat/webhook/search/cochesnet'; // Actualiza con tu URL real
     const n8nResponse = await axios.post(n8nBuscarUrl, { query }, {
       headers: {
         'Content-Type': 'application/json'
@@ -80,10 +80,9 @@ app.post('/cochesnet/search', async (req, res) => {
   }
 });
 
-// Ruta alternativa para pruebas de coches.net que usa directamente una URL sin n8n
-app.get('/cochesnet/scrape-direct', async (req, res) => {
+app.post('/cochesnet/scrape-direct', async (req, res) => {
   try {
-    const { url } = req.query;
+    const { url } = req.body;
 
     if (!url) {
       return res.status(400).json({ success: false, error: 'No se proporcionó URL' });
