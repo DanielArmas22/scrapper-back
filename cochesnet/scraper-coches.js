@@ -9,11 +9,6 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const RecaptchaPlugin = require('puppeteer-extra-plugin-recaptcha');
 const AnonymizeUAPlugin = require('puppeteer-extra-plugin-anonymize-ua');
 
-// Crear directorio para capturas si no existe
-const screenshotDir = path.join(__dirname, 'screenshots');
-if (!fs.existsSync(screenshotDir)) {
-  fs.mkdirSync(screenshotDir);
-}
 
 // Configuración avanzada de stealth
 const stealth = StealthPlugin();
@@ -167,10 +162,6 @@ async function getTotalListings(page) {
     } else {
       console.log('No se pudo determinar el número total de anuncios');
 
-      // Tomar captura para depuración
-      await page.screenshot({
-        path: path.join(screenshotDir, 'total_listings_not_found.png')
-      });
 
       return -1;
     }
@@ -183,25 +174,6 @@ async function getTotalListings(page) {
 // NUEVA FUNCIÓN: Determinar el número máximo de páginas
 async function getMaxPages(page) {
   try {
-    // Guardar captura del área de paginación para depuración
-    const paginationElement = await page.$('.mt-AdsList-pagination');
-    if (paginationElement) {
-      await paginationElement.screenshot({
-        path: path.join(screenshotDir, 'pagination_area.png')
-      });
-    }
-
-    // Obtener HTML de paginación para depuración
-    const paginationHTML = await page.evaluate(() => {
-      const element = document.querySelector('.mt-AdsList-pagination');
-      return element ? element.outerHTML : null;
-    });
-
-    if (paginationHTML) {
-      fs.writeFileSync(path.join(screenshotDir, 'pagination.html'), paginationHTML);
-      console.log('HTML de paginación guardado para análisis');
-    }
-
     // Extraer el número máximo de páginas
     const maxPages = await page.evaluate(() => {
       // Buscar todos los botones de paginación que contienen un número
@@ -253,11 +225,6 @@ async function goToNextPage(page, currentPage) {
   try {
     console.log(`Intentando navegar a la página ${currentPage + 1}...`);
 
-    // Tomar captura del estado actual antes de navegar
-    await page.screenshot({
-      path: path.join(screenshotDir, `before_navigation_page_${currentPage}.png`),
-      fullPage: false
-    });
 
     // Buscar el enlace de la siguiente página y hacer clic
     const nextPageNumber = currentPage + 1;
@@ -375,20 +342,11 @@ async function goToNextPage(page, currentPage) {
     // Si llegamos aquí, ninguno de los métodos funcionó
     console.log('❌ No se pudo navegar a la siguiente página');
 
-    // Tomar captura para depuración
-    await page.screenshot({
-      path: path.join(screenshotDir, `navigation_failed_page_${currentPage}.png`),
-      fullPage: true
-    });
 
     return { success: false, currentPage };
   } catch (error) {
     console.error(`Error al navegar a la siguiente página: ${error.message}`);
 
-    // Tomar captura para depuración
-    await page.screenshot({
-      path: path.join(screenshotDir, `navigation_error_page_${currentPage}.png`)
-    });
 
     return { success: false, currentPage };
   }
@@ -503,8 +461,7 @@ async function extractData(page) {
 
     // Primero guardamos el HTML completo para análisis
     const html = await page.content();
-    fs.writeFileSync(path.join(screenshotDir, 'page_content.html'), html);
-    console.log('HTML guardado para análisis en screenshots/page_content.html');
+
 
     // Selector principal para los anuncios en coches.net
     let adSelector = 'div[data-ad-position]';
@@ -549,7 +506,6 @@ async function extractData(page) {
 
       if (foundElements === 0) {
         console.log('No se encontraron anuncios con ningún selector conocido.');
-        await page.screenshot({ path: path.join(screenshotDir, 'no_ads_found.png') });
         return { error: 'No se encontraron anuncios' };
       } else {
         console.log(`Usando selector alternativo: ${workingSelector} (${foundElements} elementos)`);
@@ -774,12 +730,6 @@ async function extractData(page) {
     return filteredData;
   } catch (error) {
     console.error('Error general en extractData:', error.message);
-    // Intentar tomar screenshot en error general también
-    try {
-      await page.screenshot({ path: path.join(screenshotDir, 'extract_data_error.png') });
-    } catch (ssError) {
-      console.error("Error al tomar screenshot en error:", ssError.message);
-    }
 
     return { error: `Error general en extractData: ${error.message}` };
   }
@@ -851,11 +801,6 @@ async function scrapeWithPagination(page) {
         consecutiveFailures++;
         console.log(`❌ No se obtuvieron datos en la página ${currentPage} (fallo #${consecutiveFailures})`);
 
-        // Tomar captura para depuración
-        await page.screenshot({
-          path: path.join(screenshotDir, `no_data_page_${currentPage}.png`),
-          fullPage: true
-        });
 
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
           console.log(`Se alcanzó el máximo de fallos consecutivos (${MAX_CONSECUTIVE_FAILURES}), finalizando paginación`);
@@ -886,11 +831,6 @@ async function scrapeWithPagination(page) {
   } catch (error) {
     console.error('Error en scrapeWithPagination:', error.message);
 
-    // Tomar captura para depuración
-    await page.screenshot({
-      path: path.join(screenshotDir, 'pagination_error.png'),
-      fullPage: true
-    });
 
     return [];
   }
@@ -912,7 +852,7 @@ async function scrapeCoches(urlToScrape) {
 
       // MEJORAS EN LA CONFIGURACIÓN DEL NAVEGADOR
       const launchOptions = {
-        headless: false,
+        headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -1154,7 +1094,6 @@ async function scrapeCoches(urlToScrape) {
         }
 
         console.log('Página objetivo cargada.');
-        await targetPage.screenshot({ path: path.join(screenshotDir, 'target_page_loaded.png') });
 
         // Manejar cookies nuevamente si es necesario en la página objetivo
         await handleCookiesConsent(targetPage);
@@ -1258,10 +1197,6 @@ async function scrapeCoches(urlToScrape) {
       // Tomar captura para depuración
       try {
         if (currentPage) {
-          await currentPage.screenshot({
-            path: path.join(screenshotDir, `error_attempt_${attempt}.png`),
-            fullPage: true
-          });
         }
       } catch (ssError) {
         console.error('Error al tomar captura:', ssError.message);
